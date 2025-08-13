@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useEffect, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/hooks/useAuth"
@@ -11,9 +13,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react'
+import { ArrowLeft, AlertCircle, CheckCircle } from "lucide-react"
 import Link from "next/link"
-import { Event } from "@/types/database"
+import type { Event } from "@/types/database"
 
 type EventForm = {
   title: string
@@ -89,11 +91,7 @@ export default function EditarEventoPage() {
 
   async function fetchEvent() {
     try {
-      const { data, error } = await supabase
-        .from("events")
-        .select("*")
-        .eq("id", params.id)
-        .single()
+      const { data, error } = await supabase.from("events").select("*").eq("id", params.id).single()
 
       if (error) throw error
 
@@ -137,10 +135,18 @@ export default function EditarEventoPage() {
         throw new Error("Evento no encontrado.")
       }
 
+      console.log("Debug info:", {
+        userId: user.id,
+        eventOrganizerId: event.organizer_id,
+        userRole: user.role,
+        isAdmin,
+        isOrganizer,
+      })
+
       // Validate dates
       const startDate = new Date(form.start_date)
       const endDate = new Date(form.end_date)
-      
+
       if (startDate >= endDate) {
         throw new Error("La fecha de fin debe ser posterior a la fecha de inicio.")
       }
@@ -152,25 +158,28 @@ export default function EditarEventoPage() {
         end_date: form.end_date,
         location: form.location.trim() || null,
         is_virtual: form.is_virtual,
-        max_participants: form.max_participants ? parseInt(form.max_participants) : null,
+        max_participants: form.max_participants ? Number.parseInt(form.max_participants) : null,
         status: form.status,
         image_url: form.image_url.trim() || null,
         terms_and_conditions: form.terms_and_conditions.trim() || null,
         updated_at: new Date().toISOString(),
       }
 
-      const { error } = await supabase
-        .from("events")
-        .update(payload)
-        .eq("id", event.id)
+      console.log("Attempting to update event with payload:", payload)
 
-      if (error) throw error
+      const { error: updateError } = await supabase.from("events").update(payload).eq("id", event.id)
+
+      if (updateError) {
+        console.error("Supabase update error:", updateError)
+        throw new Error(`Error de base de datos: ${updateError.message}. Código: ${updateError.code}`)
+      }
 
       setSuccess("Evento actualizado exitosamente.")
-      
+
       // Refresh event data
       await fetchEvent()
     } catch (err: any) {
+      console.error("Full error:", err)
       setError(err.message || "No se pudo actualizar el evento.")
     } finally {
       setSaving(false)
@@ -202,15 +211,13 @@ export default function EditarEventoPage() {
         {/* Header */}
         <div className="mb-8">
           <Link href="/dashboard/eventos">
-            <Button variant="outline" className="mb-4">
+            <Button variant="outline" className="mb-4 bg-transparent">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Volver a eventos
             </Button>
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Editar Evento</h1>
-          <p className="text-gray-600 mt-2">
-            Modifica la información de tu evento
-          </p>
+          <p className="text-gray-600 mt-2">Modifica la información de tu evento</p>
         </div>
 
         <Card>
@@ -225,7 +232,10 @@ export default function EditarEventoPage() {
 
               {/* Success Message */}
               {success && (
-                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3" role="alert">
+                <div
+                  className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3"
+                  role="alert"
+                >
                   <CheckCircle className="h-4 w-4" />
                   {success}
                 </div>
@@ -238,7 +248,7 @@ export default function EditarEventoPage() {
                   <Input
                     id="title"
                     value={form.title}
-                    onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                     required
                     placeholder="Ej: Workshop de React Avanzado"
                   />
@@ -249,7 +259,7 @@ export default function EditarEventoPage() {
                   <Textarea
                     id="description"
                     value={form.description}
-                    onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                     required
                     rows={4}
                     placeholder="Describe tu evento, qué aprenderán los participantes, agenda, etc."
@@ -262,7 +272,7 @@ export default function EditarEventoPage() {
                     id="start_date"
                     type="datetime-local"
                     value={form.start_date}
-                    onChange={(e) => setForm(f => ({ ...f, start_date: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
                     required
                   />
                 </div>
@@ -273,7 +283,7 @@ export default function EditarEventoPage() {
                     id="end_date"
                     type="datetime-local"
                     value={form.end_date}
-                    onChange={(e) => setForm(f => ({ ...f, end_date: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))}
                     required
                   />
                 </div>
@@ -285,7 +295,7 @@ export default function EditarEventoPage() {
                   <Checkbox
                     id="is_virtual"
                     checked={form.is_virtual}
-                    onCheckedChange={(checked) => setForm(f => ({ ...f, is_virtual: !!checked }))}
+                    onCheckedChange={(checked) => setForm((f) => ({ ...f, is_virtual: !!checked }))}
                   />
                   <Label htmlFor="is_virtual">Evento virtual</Label>
                 </div>
@@ -296,7 +306,7 @@ export default function EditarEventoPage() {
                     <Input
                       id="location"
                       value={form.location}
-                      onChange={(e) => setForm(f => ({ ...f, location: e.target.value }))}
+                      onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
                       placeholder="Ej: Calle Mayor 123, Madrid"
                     />
                   </div>
@@ -312,19 +322,19 @@ export default function EditarEventoPage() {
                     type="number"
                     min="1"
                     value={form.max_participants}
-                    onChange={(e) => setForm(f => ({ ...f, max_participants: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, max_participants: e.target.value }))}
                     placeholder="Ej: 50"
                   />
-                  <p className="text-sm text-gray-500 mt-1">
-                    Deja vacío para sin límite
-                  </p>
+                  <p className="text-sm text-gray-500 mt-1">Deja vacío para sin límite</p>
                 </div>
 
                 <div>
                   <Label htmlFor="status">Estado</Label>
                   <Select
                     value={form.status}
-                    onValueChange={(value: "draft" | "published" | "cancelled" | "completed") => setForm(f => ({ ...f, status: value }))}
+                    onValueChange={(value: "draft" | "published" | "cancelled" | "completed") =>
+                      setForm((f) => ({ ...f, status: value }))
+                    }
                   >
                     <SelectTrigger id="status">
                       <SelectValue />
@@ -336,9 +346,7 @@ export default function EditarEventoPage() {
                       <SelectItem value="completed">Completado</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Solo los eventos publicados son visibles públicamente
-                  </p>
+                  <p className="text-sm text-gray-500 mt-1">Solo los eventos publicados son visibles públicamente</p>
                 </div>
               </div>
 
@@ -348,7 +356,7 @@ export default function EditarEventoPage() {
                   id="image_url"
                   type="url"
                   value={form.image_url}
-                  onChange={(e) => setForm(f => ({ ...f, image_url: e.target.value }))}
+                  onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
                   placeholder="https://ejemplo.com/imagen.jpg"
                 />
               </div>
@@ -358,14 +366,17 @@ export default function EditarEventoPage() {
                 <Textarea
                   id="terms_and_conditions"
                   value={form.terms_and_conditions}
-                  onChange={(e) => setForm(f => ({ ...f, terms_and_conditions: e.target.value }))}
+                  onChange={(e) => setForm((f) => ({ ...f, terms_and_conditions: e.target.value }))}
                   rows={3}
                   placeholder="Condiciones específicas para este evento..."
                 />
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3" role="alert">
+                <div
+                  className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3"
+                  role="alert"
+                >
                   <AlertCircle className="h-4 w-4" />
                   {error}
                 </div>
