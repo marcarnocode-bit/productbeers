@@ -143,6 +143,7 @@ export default function RecursosDashboardPage() {
   })
   const [deletingResource, setDeletingResource] = useState<Resource | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // Editor (textarea) refs y estado
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -343,6 +344,7 @@ export default function RecursosDashboardPage() {
     if (!deletingResource) return
 
     setDeleting(true)
+    setDeleteError(null)
     try {
       const { error } = await supabase.from("resources").delete().eq("id", deletingResource.id)
 
@@ -351,7 +353,8 @@ export default function RecursosDashboardPage() {
       setDeletingResource(null)
       await fetchInitial()
     } catch (err: any) {
-      setError(err instanceof Error ? err.message : "No se pudo eliminar el recurso.")
+      setDeleteError(err instanceof Error ? err.message : "No se pudo eliminar el recurso.")
+      console.error("Error deleting resource:", err)
     } finally {
       setDeleting(false)
     }
@@ -736,7 +739,13 @@ export default function RecursosDashboardPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingResource} onOpenChange={() => setDeletingResource(null)}>
+      <AlertDialog
+        open={!!deletingResource}
+        onOpenChange={() => {
+          setDeletingResource(null)
+          setDeleteError(null)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar recurso?</AlertDialogTitle>
@@ -744,6 +753,17 @@ export default function RecursosDashboardPage() {
               Esta acción no se puede deshacer. El recurso "{deletingResource?.title}" será eliminado permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {deleteError && (
+            <div
+              className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-2"
+              role="alert"
+            >
+              <AlertCircle className="h-4 w-4" />
+              {deleteError}
+            </div>
+          )}
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={deleteResource} disabled={deleting} className="bg-red-600 hover:bg-red-700">
