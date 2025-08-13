@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useEffect, useState } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { useRouter } from "next/navigation"
@@ -11,8 +13,8 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { User, Plus, X, AlertCircle, CheckCircle } from 'lucide-react'
-import { Profile } from "@/types/database"
+import { User, Plus, X, AlertCircle, CheckCircle } from "lucide-react"
+import type { Profile } from "@/types/database"
 
 type ProfileForm = {
   bio: string
@@ -57,6 +59,7 @@ export default function PerfilPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [newSkill, setNewSkill] = useState("")
   const [newInterest, setNewInterest] = useState("")
+  const [authChecked, setAuthChecked] = useState(false)
   const [form, setForm] = useState<ProfileForm>({
     bio: "",
     company: "",
@@ -70,24 +73,28 @@ export default function PerfilPage() {
   })
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/auth/signin?redirect=/perfil")
-    }
-  }, [loading, user, router])
+    const timeout = setTimeout(() => {
+      setAuthChecked(true)
+      setLoadingProfile(false)
+    }, 5000)
 
-  useEffect(() => {
-    if (user) {
-      fetchProfile()
+    if (!loading) {
+      clearTimeout(timeout)
+      setAuthChecked(true)
+
+      if (!user) {
+        router.replace("/auth/signin?redirect=/perfil")
+      } else {
+        fetchProfile()
+      }
     }
-  }, [user])
+
+    return () => clearTimeout(timeout)
+  }, [loading, user, router])
 
   async function fetchProfile() {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user!.id)
-        .single()
+      const { data, error } = await supabase.from("profiles").select("*").eq("user_id", user!.id).single()
 
       if (error && error.code !== "PGRST116") {
         throw error
@@ -140,18 +147,11 @@ export default function PerfilPage() {
       }
 
       if (profile) {
-        // Update existing profile
-        const { error } = await supabase
-          .from("profiles")
-          .update(payload)
-          .eq("id", profile.id)
+        const { error } = await supabase.from("profiles").update(payload).eq("id", profile.id)
 
         if (error) throw error
       } else {
-        // Create new profile
-        const { error } = await supabase
-          .from("profiles")
-          .insert(payload)
+        const { error } = await supabase.from("profiles").insert(payload)
 
         if (error) throw error
       }
@@ -167,36 +167,48 @@ export default function PerfilPage() {
 
   function addSkill() {
     if (newSkill.trim() && !form.skills.includes(newSkill.trim())) {
-      setForm(f => ({ ...f, skills: [...f.skills, newSkill.trim()] }))
+      setForm((f) => ({ ...f, skills: [...f.skills, newSkill.trim()] }))
       setNewSkill("")
     }
   }
 
   function removeSkill(skill: string) {
-    setForm(f => ({ ...f, skills: f.skills.filter(s => s !== skill) }))
+    setForm((f) => ({ ...f, skills: f.skills.filter((s) => s !== skill) }))
   }
 
   function addInterest() {
     if (newInterest.trim() && !form.interests.includes(newInterest.trim())) {
-      setForm(f => ({ ...f, interests: [...f.interests, newInterest.trim()] }))
+      setForm((f) => ({ ...f, interests: [...f.interests, newInterest.trim()] }))
       setNewInterest("")
     }
   }
 
   function removeInterest(interest: string) {
-    setForm(f => ({ ...f, interests: f.interests.filter(i => i !== interest) }))
+    setForm((f) => ({ ...f, interests: f.interests.filter((i) => i !== interest) }))
   }
 
-  if (loading || loadingProfile) return <ProfileSkeleton />
+  if (!authChecked || loading || loadingProfile) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-brand-primary mb-4"></div>
+          <p className="text-gray-600 mb-4">Cargando perfil...</p>
+          {authChecked && !loading && (
+            <Button onClick={() => router.push("/")} variant="outline">
+              Volver al inicio
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Inicia sesión</h1>
-          <p className="text-gray-600 mb-6">
-            Necesitas iniciar sesión para ver tu perfil.
-          </p>
+          <p className="text-gray-600 mb-6">Necesitas iniciar sesión para ver tu perfil.</p>
           <Button onClick={() => router.push("/auth/signin?redirect=/perfil")} className="btn-primary">
             Iniciar sesión
           </Button>
@@ -208,12 +220,9 @@ export default function PerfilPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Mi Perfil</h1>
-          <p className="text-gray-600 mt-2">
-            Configura tu información personal y profesional
-          </p>
+          <p className="text-gray-600 mt-2">Configura tu información personal y profesional</p>
         </div>
 
         <Card>
@@ -229,22 +238,23 @@ export default function PerfilPage() {
                 {error || success || ""}
               </div>
 
-              {/* Success Message */}
               {success && (
-                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3" role="alert">
+                <div
+                  className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3"
+                  role="alert"
+                >
                   <CheckCircle className="h-4 w-4" />
                   {success}
                 </div>
               )}
 
-              {/* Basic Info */}
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
                   <Label htmlFor="bio">Biografía</Label>
                   <Textarea
                     id="bio"
                     value={form.bio}
-                    onChange={(e) => setForm(f => ({ ...f, bio: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
                     rows={3}
                     placeholder="Cuéntanos sobre ti, tu experiencia y tus intereses..."
                   />
@@ -255,7 +265,7 @@ export default function PerfilPage() {
                   <Input
                     id="company"
                     value={form.company}
-                    onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
                     placeholder="Ej: Tech Solutions Inc."
                   />
                 </div>
@@ -265,13 +275,12 @@ export default function PerfilPage() {
                   <Input
                     id="position"
                     value={form.position}
-                    onChange={(e) => setForm(f => ({ ...f, position: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
                     placeholder="Ej: Desarrollador Frontend"
                   />
                 </div>
               </div>
 
-              {/* Skills */}
               <div>
                 <Label>Habilidades</Label>
                 <div className="flex gap-2 mb-2">
@@ -289,11 +298,7 @@ export default function PerfilPage() {
                   {form.skills.map((skill, index) => (
                     <Badge key={index} variant="secondary" className="flex items-center gap-1">
                       {skill}
-                      <button
-                        type="button"
-                        onClick={() => removeSkill(skill)}
-                        className="ml-1 hover:text-red-600"
-                      >
+                      <button type="button" onClick={() => removeSkill(skill)} className="ml-1 hover:text-red-600">
                         <X className="h-3 w-3" />
                       </button>
                     </Badge>
@@ -301,7 +306,6 @@ export default function PerfilPage() {
                 </div>
               </div>
 
-              {/* Interests */}
               <div>
                 <Label>Intereses</Label>
                 <div className="flex gap-2 mb-2">
@@ -331,7 +335,6 @@ export default function PerfilPage() {
                 </div>
               </div>
 
-              {/* Social Links */}
               <div className="grid md:grid-cols-3 gap-6">
                 <div>
                   <Label htmlFor="linkedin_url">LinkedIn</Label>
@@ -339,7 +342,7 @@ export default function PerfilPage() {
                     id="linkedin_url"
                     type="url"
                     value={form.linkedin_url}
-                    onChange={(e) => setForm(f => ({ ...f, linkedin_url: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, linkedin_url: e.target.value }))}
                     placeholder="https://linkedin.com/in/tu-perfil"
                   />
                 </div>
@@ -350,7 +353,7 @@ export default function PerfilPage() {
                     id="twitter_url"
                     type="url"
                     value={form.twitter_url}
-                    onChange={(e) => setForm(f => ({ ...f, twitter_url: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, twitter_url: e.target.value }))}
                     placeholder="https://twitter.com/tu-usuario"
                   />
                 </div>
@@ -361,27 +364,27 @@ export default function PerfilPage() {
                     id="website_url"
                     type="url"
                     value={form.website_url}
-                    onChange={(e) => setForm(f => ({ ...f, website_url: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, website_url: e.target.value }))}
                     placeholder="https://tu-sitio.com"
                   />
                 </div>
               </div>
 
-              {/* Privacy */}
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="is_public"
                   checked={form.is_public}
-                  onCheckedChange={(checked) => setForm(f => ({ ...f, is_public: !!checked }))}
+                  onCheckedChange={(checked) => setForm((f) => ({ ...f, is_public: !!checked }))}
                 />
                 <Label htmlFor="is_public">Hacer mi perfil público</Label>
-                <p className="text-sm text-gray-500">
-                  Tu perfil aparecerá en la página de comunidad
-                </p>
+                <p className="text-sm text-gray-500">Tu perfil aparecerá en la página de comunidad</p>
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3" role="alert">
+                <div
+                  className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3"
+                  role="alert"
+                >
                   <AlertCircle className="h-4 w-4" />
                   {error}
                 </div>

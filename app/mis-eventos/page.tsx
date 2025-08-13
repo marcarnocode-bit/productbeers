@@ -7,9 +7,9 @@ import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, MapPin, Users, Plus, Edit, Eye } from 'lucide-react'
+import { Calendar, MapPin, Users, Plus, Edit, Eye } from "lucide-react"
 import Link from "next/link"
-import { Event } from "@/types/database"
+import type { Event } from "@/types/database"
 
 function EventSkeleton() {
   return (
@@ -33,9 +33,7 @@ function EmptyState() {
     <div className="text-center py-12">
       <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
       <h3 className="text-lg font-medium text-gray-900 mb-2">No has organizado eventos aún</h3>
-      <p className="text-gray-600 mb-6">
-        Crea tu primer evento y comienza a construir tu comunidad.
-      </p>
+      <p className="text-gray-600 mb-6">Crea tu primer evento y comienza a construir tu comunidad.</p>
       <Link href="/dashboard/eventos/crear">
         <Button className="btn-primary">
           <Plus className="h-4 w-4 mr-2" />
@@ -52,18 +50,29 @@ export default function MisEventosPage() {
   const [events, setEvents] = useState<Event[]>([])
   const [loadingEvents, setLoadingEvents] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/auth/signin?redirect=/mis-eventos")
-    }
-  }, [loading, user, router])
+    const timeout = setTimeout(() => {
+      setAuthChecked(true)
+      setLoadingEvents(false)
+    }, 5000)
 
-  useEffect(() => {
-    if (user && (isOrganizer || isAdmin)) {
-      fetchMyEvents()
+    if (!loading) {
+      clearTimeout(timeout)
+      setAuthChecked(true)
+
+      if (!user) {
+        router.replace("/auth/signin?redirect=/mis-eventos")
+      } else if (isOrganizer || isAdmin) {
+        fetchMyEvents()
+      } else {
+        setLoadingEvents(false)
+      }
     }
-  }, [user, isOrganizer, isAdmin])
+
+    return () => clearTimeout(timeout)
+  }, [loading, user, isOrganizer, isAdmin, router])
 
   async function fetchMyEvents() {
     try {
@@ -100,42 +109,20 @@ export default function MisEventosPage() {
       completed: { label: "Completado", className: "bg-blue-100 text-blue-800" },
     }
     const variant = variants[status as keyof typeof variants] || variants.draft
-    return (
-      <Badge className={variant.className}>
-        {variant.label}
-      </Badge>
-    )
+    return <Badge className={variant.className}>{variant.label}</Badge>
   }
 
-  if (loading || loadingEvents) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <div className="h-8 bg-gray-200 rounded animate-pulse w-64 mb-2" />
-            <div className="h-4 bg-gray-200 rounded animate-pulse w-96" />
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <EventSkeleton key={i} />
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user || (!isOrganizer && !isAdmin)) {
+  if (!authChecked || loading || loadingEvents) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Acceso restringido</h1>
-          <p className="text-gray-600 mb-6">
-            Necesitas permisos de organizador para ver esta página.
-          </p>
-          <Link href="/">
-            <Button className="btn-primary">Volver al inicio</Button>
-          </Link>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-brand-primary mb-4"></div>
+          <p className="text-gray-600 mb-4">Cargando eventos...</p>
+          {authChecked && !loading && (
+            <Button onClick={() => router.push("/")} variant="outline">
+              Volver al inicio
+            </Button>
+          )}
         </div>
       </div>
     )
@@ -161,9 +148,7 @@ export default function MisEventosPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Mis Eventos</h1>
-            <p className="text-gray-600 mt-2">
-              Gestiona los eventos que has creado como organizador
-            </p>
+            <p className="text-gray-600 mt-2">Gestiona los eventos que has creado como organizador</p>
           </div>
           <Link href="/dashboard/eventos/crear">
             <Button className="btn-primary">
@@ -182,9 +167,7 @@ export default function MisEventosPage() {
               <Card key={event.id} className="hover:shadow-lg transition-shadow duration-300">
                 <CardHeader>
                   <div className="flex items-start justify-between mb-2">
-                    <CardTitle className="text-lg font-bold line-clamp-2">
-                      {event.title}
-                    </CardTitle>
+                    <CardTitle className="text-lg font-bold line-clamp-2">{event.title}</CardTitle>
                     {getStatusBadge(event.status)}
                   </div>
                   <p className="text-gray-600 text-sm line-clamp-3">{event.description}</p>
@@ -214,7 +197,7 @@ export default function MisEventosPage() {
 
                   <div className="flex gap-2 pt-2">
                     <Link href={`/eventos/${event.id}`} className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full">
+                      <Button variant="outline" size="sm" className="w-full bg-transparent">
                         <Eye className="h-4 w-4 mr-1" />
                         Ver
                       </Button>

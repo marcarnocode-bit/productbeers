@@ -8,14 +8,23 @@ import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb"
 import { useAuth } from "@/hooks/useAuth"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
+import { Button } from "@/components/ui/button"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, userData, loading, isAdmin, isOrganizer } = useAuth()
+  const { user, loading, isAdmin, isOrganizer } = useAuth()
   const router = useRouter()
+  const [authChecked, setAuthChecked] = useState(false)
 
   useEffect(() => {
+    const timeout = setTimeout(() => {
+      setAuthChecked(true)
+    }, 5000) // 5 second timeout
+
     if (!loading) {
+      clearTimeout(timeout)
+      setAuthChecked(true)
+
       if (!user) {
         router.push("/auth/signin")
         return
@@ -26,13 +35,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return
       }
     }
-  }, [user, userData, loading, isAdmin, isOrganizer, router])
 
-  // Show loading while checking authentication
-  if (loading) {
+    return () => clearTimeout(timeout)
+  }, [user, loading, isAdmin, isOrganizer, router])
+
+  if (!authChecked || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-brand-primary"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-brand-primary mb-4"></div>
+          <p className="text-gray-600">Verificando permisos...</p>
+          {!loading && (
+            <Button onClick={() => router.push("/")} variant="outline" className="mt-4">
+              Volver al inicio
+            </Button>
+          )}
+        </div>
       </div>
     )
   }

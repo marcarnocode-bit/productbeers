@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react"
+import { createContext, useContext, useEffect, useMemo, useState } from "react"
 import type { User as SupabaseUser, AuthChangeEvent, Session } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import type { Profile, User as UserRow } from "@/types/database"
@@ -22,128 +21,103 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const CACHE_KEY = "pb_user_permissions"
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
-
-function getCachedPermissions() {
-  if (typeof window === "undefined") return null
-  try {
-    const cached = localStorage.getItem(CACHE_KEY)
-    if (!cached) return null
-    const { data, timestamp } = JSON.parse(cached)
-    if (Date.now() - timestamp > CACHE_DURATION) {
-      localStorage.removeItem(CACHE_KEY)
-      return null
-    }
-    return data
-  } catch {
-    return null
-  }
-}
-
-function setCachedPermissions(userData: UserRow | null, profile: Profile | null) {
-  if (typeof window === "undefined") return
-  try {
-    localStorage.setItem(
-      CACHE_KEY,
-      JSON.stringify({
-        data: { userData, profile },
-        timestamp: Date.now(),
-      }),
-    )
-  } catch {
-    // Ignore storage errors
-  }
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [userData, setUserData] = useState<UserRow | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [initialLoad, setInitialLoad] = useState(true)
 
-  const fetchUserRelatedData = useCallback(
-    async (u: SupabaseUser | null) => {
-      if (!u) {
-        setUserData(null)
-        setProfile(null)
-        if (typeof window !== "undefined") {
-          localStorage.removeItem(CACHE_KEY)
-        }
-        setLoading(false)
-        return
-      }
+  const fetchUserData = async (u: SupabaseUser | null) => {
+    if (!u) {
+      setUserData(null)
+      setProfile(null)
+      setLoading(false)
+      return
+    }
 
-      if (initialLoad) {
-        const cached = getCachedPermissions()
-        if (cached) {
-          setUserData(cached.userData)
-          setProfile(cached.profile)
-          setLoading(false)
-          setInitialLoad(false)
-          // Still fetch fresh data in background
-          fetchFreshUserData(u)
-          return
-        }
-      }
-
-      await fetchFreshUserData(u)
-    },
-    [initialLoad],
-  )
-
-  const fetchFreshUserData = async (u: SupabaseUser) => {
     try {
-      const [{ data: usersRow, error: usersError }, { data: profileRow, error: profileError }] = await Promise.all([
-        supabase.from("users").select("*").eq("id", u.id).single(),
-        supabase.from("profiles").select("*").eq("user_id", u.id).single(),
-      ])
+      // Fetch user data from users table
+      const { data: usersRow, error: usersError } = await supabase.from("users").select("*").eq("id", u.id).single()
 
       if (usersError) {
-        console.error("Error fetching users row:", usersError.message)
-        setUserData(null)
+        console.error("Error fetching user data:", usersError.message)
+        setUserData({
+          id: u.id,
+          email: u.email || "",
+          role: "user",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as UserRow)
       } else {
         setUserData(usersRow as UserRow)
       }
 
-      if (profileError && (profileError as any).code !== "PGRST116") {
-        console.error("Error fetching profile row:", profileError.message)
-      }
-      setProfile(profileRow as Profile)
+      // Fetch profile data (optional)
+      const { data: profileRow, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", u.id)
+        .single()
 
-      setCachedPermissions(usersRow as UserRow, profileRow as Profile)
+      if (profileError && profileError.code !== "PGRST116") {
+        console.error("Error fetching profile:", profileError.message)
+      }
+      setProfile((profileRow as Profile) || null)
     } catch (err) {
-      console.error("Error fetching user-related data:", err)
-      setUserData(null)
+      console.error("Error in fetchUserData:", err)
+      setUserData({
+        id: u.id,
+        email: u.email || "",
+        role: "user",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as UserRow)
       setProfile(null)
     } finally {
       setLoading(false)
-      setInitialLoad(false)
     }
   }
 
   useEffect(() => {
-    const init = async () => {
-      const { data } = await supabase.auth.getSession()
-      const session = data.session
-      setUser(session?.user ?? null)
-      await fetchUserRelatedData(session?.user ?? null)
-    }
-    init()
+    let mounted = true
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event: AuthChangeEvent, session: Session | null) => {
+    const initAuth = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        if (mounted) {
+          setUser(session?.user ?? null)
+          await fetchUserData(session?.user ?? null)
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error)
+        if (mounted) {
+          setUser(null)
+          setUserData(null)
+          setProfile(null)
+          setLoading(false)
+        }
+      }
+    }
+
+    initAuth()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+      if (mounted) {
         setLoading(true)
         setUser(session?.user ?? null)
-        await fetchUserRelatedData(session?.user ?? null)
-      },
-    )
+        await fetchUserData(session?.user ?? null)
+      }
+    })
 
     return () => {
-      listener.subscription.unsubscribe()
+      mounted = false
+      subscription.unsubscribe()
     }
-  }, [fetchUserRelatedData])
+  }, [])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -154,9 +128,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut()
     setUserData(null)
     setProfile(null)
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(CACHE_KEY)
-    }
   }
 
   const updateUserData = async (updates: Partial<UserRow>) => {
@@ -170,7 +141,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!error && data) {
       setUserData(data as UserRow)
-      setCachedPermissions(data as UserRow, profile)
     }
     return { error }
   }
@@ -186,7 +156,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!error && data) {
       setProfile(data as Profile)
-      setCachedPermissions(userData, data as Profile)
     }
     return { error }
   }
