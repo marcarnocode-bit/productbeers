@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserData(null)
       setProfile(null)
       setLoading(false)
+      setInitialLoadComplete(true)
       return
     }
 
@@ -42,13 +43,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (usersError) {
         console.error("Error fetching user data:", usersError.message)
-        setUserData({
-          id: u.id,
-          email: u.email || "",
-          role: "user",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        } as UserRow)
+        // Keep existing userData if available, or set to null
+        if (!userData) {
+          setUserData(null)
+        }
       } else {
         setUserData(usersRow as UserRow)
       }
@@ -66,14 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile((profileRow as Profile) || null)
     } catch (err) {
       console.error("Error in fetchUserData:", err)
-      setUserData({
-        id: u.id,
-        email: u.email || "",
-        role: "user",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as UserRow)
-      setProfile(null)
+      if (!userData) {
+        setUserData(null)
+      }
     } finally {
       setLoading(false)
       setInitialLoadComplete(true)
@@ -82,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true
+    let authSubscription: any = null
 
     const initAuth = async () => {
       try {
@@ -104,32 +98,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    initAuth()
+    const setupAuthListener = () => {
+      authSubscription = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+        if (!mounted) return
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+        console.log("Auth state change:", event, session?.user?.id)
+
+        if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
+          if (event === "SIGNED_OUT") {
+            setUser(null)
+            setUserData(null)
+            setProfile(null)
+            setLoading(false)
+            setInitialLoadComplete(true)
+          } else {
+            setUser(session?.user ?? null)
+            const currentUserId = user?.id
+            const newUserId = session?.user?.id
+            if (currentUserId !== newUserId) {
+              setLoading(true)
+              await fetchUserData(session?.user ?? null)
+            }
+          }
+        }
+      })
+    }
+
+    initAuth().then(() => {
       if (mounted) {
-        const currentUserId = user?.id
-        const newUserId = session?.user?.id
-
-        if (event === "SIGNED_OUT" || currentUserId !== newUserId) {
-          setLoading(true)
-        }
-
-        setUser(session?.user ?? null)
-
-        if (event === "SIGNED_OUT" || currentUserId !== newUserId) {
-          await fetchUserData(session?.user ?? null)
-        }
+        setupAuthListener()
       }
     })
 
     return () => {
       mounted = false
-      subscription.unsubscribe()
+      if (authSubscription) {
+        authSubscription.data?.subscription?.unsubscribe()
+      }
     }
-  }, [user?.id])
+  }, []) // Empty dependency array to prevent race conditions
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -175,11 +182,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = useMemo(() => userData?.role === "admin", [userData?.role])
   const isOrganizer = useMemo(() => userData?.role === "admin" || userData?.role === "organizer", [userData?.role])
 
+  const isLoading = loading && !initialLoadComplete
+
   const value: AuthContextType = {
     user,
     userData,
     profile,
-    loading: loading && !initialLoadComplete,
+    loading: isLoading,
     isAdmin,
     isOrganizer,
     signIn,
