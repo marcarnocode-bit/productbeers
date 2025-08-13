@@ -167,13 +167,23 @@ export default function EditarEventoPage() {
 
       console.log("Attempting to update event with payload:", payload)
 
-      const { error: updateError } = await supabase.from("events").update(payload).eq("id", event.id)
+      const {
+        data,
+        error: updateError,
+        count,
+      } = await supabase.from("events").update(payload).eq("id", event.id).select()
 
       if (updateError) {
         console.error("Supabase update error:", updateError)
         throw new Error(`Error de base de datos: ${updateError.message}. Código: ${updateError.code}`)
       }
 
+      if (!data || data.length === 0) {
+        console.error("No rows were updated. This might be an RLS policy issue.")
+        throw new Error("No se pudo actualizar el evento. Verifica que tienes permisos para editarlo.")
+      }
+
+      console.log("Update successful:", data)
       setSuccess("Evento actualizado exitosamente.")
 
       // Refresh event data
