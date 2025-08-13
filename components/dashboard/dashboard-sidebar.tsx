@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   Sidebar,
   SidebarContent,
@@ -96,10 +96,15 @@ const managementItems = [
 
 export function DashboardSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { user, userData, signOut } = useAuth()
 
   const handleSignOut = async () => {
     await signOut()
+  }
+
+  const handleMouseEnter = (href: string) => {
+    router.prefetch(href)
   }
 
   return (
@@ -134,7 +139,11 @@ export function DashboardSidebar() {
                         : "text-text-primary hover:bg-brand-primary/10 hover:text-brand-primary"
                     }`}
                   >
-                    <Link href={item.url} className="flex items-center gap-3 px-3 py-2">
+                    <Link
+                      href={item.url}
+                      className="flex items-center gap-3 px-3 py-2"
+                      onMouseEnter={() => handleMouseEnter(item.url)}
+                    >
                       <item.icon className="h-4 w-4" />
                       <span className="font-medium">{item.title}</span>
                     </Link>
@@ -160,7 +169,11 @@ export function DashboardSidebar() {
                         : "text-text-primary hover:bg-brand-primary/10 hover:text-brand-primary"
                     }`}
                   >
-                    <Link href={item.url} className="flex items-center gap-3 px-3 py-2">
+                    <Link
+                      href={item.url}
+                      className="flex items-center gap-3 px-3 py-2"
+                      onMouseEnter={() => handleMouseEnter(item.url)}
+                    >
                       <item.icon className="h-4 w-4" />
                       <span className="font-medium">{item.title}</span>
                     </Link>
@@ -177,7 +190,13 @@ export function DashboardSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton className="w-full mx-2 p-3 hover:bg-brand-primary/10 rounded-md transition-colors">
+                <SidebarMenuButton
+                  className="w-full mx-2 p-3 hover:bg-brand-primary/10 rounded-md transition-colors"
+                  onMouseEnter={() => {
+                    handleMouseEnter("/perfil")
+                    handleMouseEnter("/dashboard/configuracion")
+                  }}
+                >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={userData?.avatar_url || ""} alt={userData?.full_name || ""} />
                     <AvatarFallback className="bg-brand-primary text-white">

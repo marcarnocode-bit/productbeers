@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -25,8 +25,13 @@ const nav = [
 
 export default function Header() {
   const pathname = usePathname()
+  const router = useRouter()
   const { user, userData, isAdmin, isOrganizer, signOut } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const handleMouseEnter = (href: string) => {
+    router.prefetch(href)
+  }
 
   return (
     <header
@@ -58,6 +63,7 @@ export default function Header() {
               <Link
                 key={item.href}
                 href={item.href}
+                onMouseEnter={() => handleMouseEnter(item.href)}
                 className={cn(
                   "text-sm font-medium transition-colors relative py-1",
                   active ? "text-brand-primary" : "text-gray-800 hover:text-brand-primary",
@@ -74,7 +80,7 @@ export default function Header() {
         <div className="flex items-center gap-2">
           {!user ? (
             <div className="hidden md:flex items-center gap-3">
-              <Link href="/auth/signin">
+              <Link href="/auth/signin" onMouseEnter={() => handleMouseEnter("/auth/signin")}>
                 <Button
                   variant="outline"
                   className="border-gray-300 text-gray-900 hover:border-brand-primary hover:text-brand-primary bg-transparent"
@@ -82,7 +88,7 @@ export default function Header() {
                   Iniciar sesión
                 </Button>
               </Link>
-              <Link href="/auth/signup">
+              <Link href="/auth/signup" onMouseEnter={() => handleMouseEnter("/auth/signup")}>
                 <Button className="bg-brand-primary hover:bg-brand-secondary text-white">Crear cuenta</Button>
               </Link>
             </div>
@@ -92,6 +98,13 @@ export default function Header() {
                 <Button
                   variant="outline"
                   className="border-gray-300 text-gray-900 hover:border-brand-primary hover:text-brand-primary flex items-center gap-2 bg-transparent"
+                  onMouseEnter={() => {
+                    handleMouseEnter("/perfil")
+                    handleMouseEnter("/mis-eventos")
+                    if (isAdmin || isOrganizer) {
+                      handleMouseEnter("/dashboard")
+                    }
+                  }}
                 >
                   <Avatar className="h-8 w-8 border-2 border-brand-light">
                     <AvatarImage src={userData?.avatar_url ?? ""} alt={userData?.full_name ?? "Usuario"} />
@@ -207,6 +220,7 @@ export default function Header() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setMobileMenuOpen(false)}
+                        onTouchStart={() => handleMouseEnter(item.href)}
                         className={cn(
                           "flex items-center gap-3 px-3 py-2.5 text-base font-medium rounded-md mx-2 transition-colors",
                           active ? "bg-brand-light text-brand-primary" : "text-gray-900 hover:bg-gray-100",
@@ -227,6 +241,7 @@ export default function Header() {
                       <Link
                         href="/perfil"
                         onClick={() => setMobileMenuOpen(false)}
+                        onTouchStart={() => handleMouseEnter("/perfil")}
                         className="flex items-center gap-3 px-3 py-2.5 text-base font-medium rounded-md mx-2 text-gray-900 hover:bg-gray-100"
                       >
                         <User className="h-5 w-5" />
@@ -235,6 +250,7 @@ export default function Header() {
                       <Link
                         href="/mis-eventos"
                         onClick={() => setMobileMenuOpen(false)}
+                        onTouchStart={() => handleMouseEnter("/mis-eventos")}
                         className="flex items-center gap-3 px-3 py-2.5 text-base font-medium rounded-md mx-2 text-gray-900 hover:bg-gray-100"
                       >
                         <Calendar className="h-5 w-5" />
@@ -244,6 +260,7 @@ export default function Header() {
                         <Link
                           href="/dashboard"
                           onClick={() => setMobileMenuOpen(false)}
+                          onTouchStart={() => handleMouseEnter("/dashboard")}
                           className="flex items-center gap-3 px-3 py-2.5 text-base font-medium rounded-md mx-2 text-gray-900 hover:bg-gray-100"
                         >
                           <LayoutDashboard className="h-5 w-5" />

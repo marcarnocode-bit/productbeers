@@ -39,7 +39,7 @@ export default async function HomePage() {
             </h1>
 
             <p className="text-lg sm:text-xl text-white/90 mb-8 max-w-2xl">
-              La comunidad de profesionales de producto digital: PMs, PO, UX, data y tecnología.
+              La comunidad de profesionales de producto digital.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
