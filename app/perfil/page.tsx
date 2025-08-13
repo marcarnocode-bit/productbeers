@@ -26,6 +26,8 @@ type ProfileForm = {
   twitter_url: string
   website_url: string
   is_public: boolean
+  full_name: string
+  avatar_url: string
 }
 
 function ProfileSkeleton() {
@@ -70,6 +72,8 @@ export default function PerfilPage() {
     twitter_url: "",
     website_url: "",
     is_public: false,
+    full_name: "",
+    avatar_url: "",
   })
 
   useEffect(() => {
@@ -94,26 +98,43 @@ export default function PerfilPage() {
 
   async function fetchProfile() {
     try {
-      const { data, error } = await supabase.from("profiles").select("*").eq("user_id", user!.id).single()
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user!.id)
+        .single()
 
-      if (error && error.code !== "PGRST116") {
-        throw error
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("full_name, avatar_url")
+        .eq("id", user!.id)
+        .single()
+
+      if (profileError && profileError.code !== "PGRST116") {
+        throw profileError
       }
 
-      if (data) {
-        setProfile(data)
-        setForm({
-          bio: data.bio || "",
-          company: data.company || "",
-          position: data.position || "",
-          skills: data.skills || [],
-          interests: data.interests || [],
-          linkedin_url: data.linkedin_url || "",
-          twitter_url: data.twitter_url || "",
-          website_url: data.website_url || "",
-          is_public: data.is_public,
-        })
+      if (userError) {
+        throw userError
       }
+
+      if (profileData) {
+        setProfile(profileData)
+      }
+
+      setForm({
+        bio: profileData?.bio || "",
+        company: profileData?.company || "",
+        position: profileData?.position || "",
+        skills: profileData?.skills || [],
+        interests: profileData?.interests || [],
+        linkedin_url: profileData?.linkedin_url || "",
+        twitter_url: profileData?.twitter_url || "",
+        website_url: profileData?.website_url || "",
+        is_public: profileData?.is_public || false,
+        full_name: userData?.full_name || "",
+        avatar_url: userData?.avatar_url || "",
+      })
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -132,7 +153,12 @@ export default function PerfilPage() {
         throw new Error("Debes iniciar sesión para actualizar tu perfil.")
       }
 
-      const payload = {
+      const userPayload = {
+        full_name: form.full_name.trim() || null,
+        avatar_url: form.avatar_url.trim() || null,
+      }
+
+      const profilePayload = {
         user_id: user.id,
         bio: form.bio.trim() || null,
         company: form.company.trim() || null,
@@ -146,13 +172,15 @@ export default function PerfilPage() {
         updated_at: new Date().toISOString(),
       }
 
-      if (profile) {
-        const { error } = await supabase.from("profiles").update(payload).eq("id", profile.id)
+      const { error: userUpdateError } = await supabase.from("users").update(userPayload).eq("id", user.id)
 
+      if (userUpdateError) throw userUpdateError
+
+      if (profile) {
+        const { error } = await supabase.from("profiles").update(profilePayload).eq("id", profile.id)
         if (error) throw error
       } else {
-        const { error } = await supabase.from("profiles").insert(payload)
-
+        const { error } = await supabase.from("profiles").insert(profilePayload)
         if (error) throw error
       }
 
@@ -249,6 +277,27 @@ export default function PerfilPage() {
               )}
 
               <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="full_name">Nombre completo</Label>
+                  <Input
+                    id="full_name"
+                    value={form.full_name}
+                    onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
+                    placeholder="Tu nombre completo"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="avatar_url">URL del avatar</Label>
+                  <Input
+                    id="avatar_url"
+                    type="url"
+                    value={form.avatar_url}
+                    onChange={(e) => setForm((f) => ({ ...f, avatar_url: e.target.value }))}
+                    placeholder="https://ejemplo.com/tu-avatar.jpg"
+                  />
+                </div>
+
                 <div className="md:col-span-2">
                   <Label htmlFor="bio">Biografía</Label>
                   <Textarea

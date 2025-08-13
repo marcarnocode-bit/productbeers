@@ -70,6 +70,31 @@ function EmptyState({ searchTerm }: { searchTerm: string }) {
   )
 }
 
+function ProfileAvatar({ avatarUrl, fullName }: { avatarUrl: string | null; fullName: string | null }) {
+  const [imageError, setImageError] = useState(false)
+
+  const handleImageError = () => {
+    setImageError(true)
+  }
+
+  const shouldShowImage = avatarUrl && !imageError && avatarUrl.trim() !== ""
+
+  return (
+    <div className="h-16 w-16 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-full flex items-center justify-center overflow-hidden">
+      {shouldShowImage ? (
+        <img
+          src={avatarUrl || "/placeholder.svg"}
+          alt={fullName || "Usuario"}
+          className="h-16 w-16 object-cover"
+          onError={handleImageError}
+        />
+      ) : (
+        <User className="h-8 w-8 text-white" />
+      )}
+    </div>
+  )
+}
+
 export default function ComunidadPage() {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [filteredProfiles, setFilteredProfiles] = useState<Profile[]>([])
@@ -202,17 +227,7 @@ export default function ComunidadPage() {
               <Card key={profile.id} className="hover:shadow-lg transition-shadow duration-300">
                 <CardHeader>
                   <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-full flex items-center justify-center overflow-hidden">
-                      {profile.users?.avatar_url ? (
-                        <img
-                          src={profile.users.avatar_url || "/placeholder.svg?height=64&width=64&query=person"}
-                          alt={profile.users.full_name || "Usuario"}
-                          className="h-16 w-16 object-cover"
-                        />
-                      ) : (
-                        <User className="h-8 w-8 text-white" />
-                      )}
-                    </div>
+                    <ProfileAvatar avatarUrl={profile.users?.avatar_url} fullName={profile.users?.full_name} />
                     <div className="flex-1">
                       <CardTitle className="text-lg font-bold">{profile.users?.full_name || "Usuario"}</CardTitle>
                       {profile.position && profile.company && (
