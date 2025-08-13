@@ -7,6 +7,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/hooks/useAuth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -18,6 +19,9 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+
+  const [acceptLegal, setAcceptLegal] = useState(false)
+
   const { signUp } = useAuth()
   const router = useRouter()
 
@@ -25,6 +29,12 @@ export default function SignUpPage() {
     e.preventDefault()
     setLoading(true)
     setError("")
+
+    if (!acceptLegal) {
+      setError("Debe aceptar los Términos y Condiciones y la Política de Privacidad para continuar.")
+      setLoading(false)
+      return
+    }
 
     const { error } = await signUp(email, password, fullName)
 
@@ -71,7 +81,9 @@ export default function SignUpPage() {
             <span className="text-3xl">🍺</span>
           </div>
           <CardTitle className="text-3xl font-bold text-text-primary">Únete a Product Beers</CardTitle>
-          <CardDescription className="text-text-secondary text-base">Crea tu cuenta y comienza a conectar con profesionales de producto</CardDescription>
+          <CardDescription className="text-text-secondary text-base">
+            Crea tu cuenta y comienza a conectar con profesionales de producto
+          </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -82,7 +94,9 @@ export default function SignUpPage() {
             )}
 
             <div className="space-y-3">
-              <Label htmlFor="fullName" className="text-text-primary font-semibold text-base">Nombre Completo</Label>
+              <Label htmlFor="fullName" className="text-text-primary font-semibold text-base">
+                Nombre Completo
+              </Label>
               <Input
                 id="fullName"
                 type="text"
@@ -95,7 +109,9 @@ export default function SignUpPage() {
             </div>
 
             <div className="space-y-3">
-              <Label htmlFor="email" className="text-text-primary font-semibold text-base">Email</Label>
+              <Label htmlFor="email" className="text-text-primary font-semibold text-base">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -108,7 +124,9 @@ export default function SignUpPage() {
             </div>
 
             <div className="space-y-3">
-              <Label htmlFor="password" className="text-text-primary font-semibold text-base">Contraseña</Label>
+              <Label htmlFor="password" className="text-text-primary font-semibold text-base">
+                Contraseña
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -122,10 +140,61 @@ export default function SignUpPage() {
               <p className="text-sm text-text-secondary">Mínimo 6 caracteres</p>
             </div>
 
+            <div className="space-y-4 pt-2">
+              <div className="space-y-3">
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="acceptLegal"
+                    checked={acceptLegal}
+                    onCheckedChange={(checked) => setAcceptLegal(checked as boolean)}
+                    className="mt-1"
+                    required
+                  />
+                  <div className="text-sm">
+                    <Label htmlFor="acceptLegal" className="text-text-primary font-medium cursor-pointer">
+                      Acepto los{" "}
+                      <Link
+                        href="/terminos"
+                        className="text-brand-primary hover:text-brand-secondary underline"
+                        target="_blank"
+                      >
+                        Términos y Condiciones
+                      </Link>{" "}
+                      y la{" "}
+                      <Link
+                        href="/privacidad"
+                        className="text-brand-primary hover:text-brand-secondary underline"
+                        target="_blank"
+                      >
+                        Política de Privacidad
+                      </Link>
+                      <span className="text-error-DEFAULT ml-1">*</span>
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-info-light border border-info-DEFAULT rounded-lg p-3">
+                <p className="text-info-dark text-xs leading-relaxed">
+                  <strong>Información sobre protección de datos:</strong> Sus datos serán tratados por Product Beers
+                  Valencia para gestionar su cuenta y proporcionarle nuestros servicios. Puede ejercer sus derechos de
+                  acceso, rectificación, supresión y portabilidad escribiendo a{" "}
+                  <Link href="mailto:privacidad@productbeers.com" className="underline">
+                    privacidad@productbeers.com
+                  </Link>
+                  . Consulte nuestra{" "}
+                  <Link href="/privacidad" className="underline" target="_blank">
+                    Política de Privacidad
+                  </Link>{" "}
+                  para más información.
+                </p>
+              </div>
+            </div>
+
             <Button
               type="submit"
-              disabled={loading}
-              className="w-full bg-brand-primary hover:bg-brand-secondary text-white font-semibold h-12 text-base transition-colors"
+              disabled={loading || !acceptLegal}
+              className="w-full bg-brand-primary hover:bg-brand-secondary text-white font-semibold h-12 text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
@@ -141,7 +210,10 @@ export default function SignUpPage() {
           <div className="mt-8 text-center">
             <p className="text-base text-text-secondary">
               ¿Ya tienes una cuenta?{" "}
-              <Link href="/auth/signin" className="text-brand-primary hover:text-brand-secondary font-semibold underline">
+              <Link
+                href="/auth/signin"
+                className="text-brand-primary hover:text-brand-secondary font-semibold underline"
+              >
                 Inicia sesión
               </Link>
             </p>

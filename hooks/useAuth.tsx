@@ -26,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userData, setUserData] = useState<UserRow | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false)
 
   const fetchUserData = async (u: SupabaseUser | null) => {
     if (!u) {
@@ -75,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null)
     } finally {
       setLoading(false)
+      setInitialLoadComplete(true)
     }
   }
 
@@ -97,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUserData(null)
           setProfile(null)
           setLoading(false)
+          setInitialLoadComplete(true)
         }
       }
     }
@@ -107,9 +110,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       if (mounted) {
-        setLoading(true)
+        const currentUserId = user?.id
+        const newUserId = session?.user?.id
+
+        if (event === "SIGNED_OUT" || currentUserId !== newUserId) {
+          setLoading(true)
+        }
+
         setUser(session?.user ?? null)
-        await fetchUserData(session?.user ?? null)
+
+        if (event === "SIGNED_OUT" || currentUserId !== newUserId) {
+          await fetchUserData(session?.user ?? null)
+        }
       }
     })
 
@@ -117,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false
       subscription.unsubscribe()
     }
-  }, [])
+  }, [user?.id])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -167,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     userData,
     profile,
-    loading,
+    loading: loading && !initialLoadComplete,
     isAdmin,
     isOrganizer,
     signIn,

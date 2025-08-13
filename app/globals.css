@@ -43,6 +43,11 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Added missing brand color variables */
+    --brand-primary: 45 93% 47%;
+    --brand-secondary: 43 96% 56%;
+    --brand-light: 48 100% 88%;
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -77,6 +82,11 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Added brand colors for dark mode */
+    --brand-primary: 45 93% 47%;
+    --brand-secondary: 43 96% 56%;
+    --brand-light: 48 100% 88%;
   }
 }
 
@@ -90,7 +100,7 @@
 
   /* Improved focus styles for better accessibility */
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand-primary;
+    @apply outline-2 outline-offset-2 outline-amber-400;
   }
 
   /* Smooth scrolling for the entire page */
@@ -134,25 +144,25 @@
 
 /* Skip to content link for accessibility */
 .skip-to-content {
-  @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-brand-primary focus:shadow-lg focus:rounded-md;
+  @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-amber-600 focus:shadow-lg focus:rounded-md;
 }
 
-/* Improved button styles */
+/* Updated button styles to use proper HSL color format */
 .btn-primary {
-  @apply bg-brand-primary hover:bg-brand-secondary text-white transition-colors;
+  @apply bg-amber-500 hover:bg-amber-600 text-white transition-colors;
 }
 
 .btn-secondary {
-  @apply bg-white text-brand-primary hover:bg-gray-100 border border-brand-primary/30 transition-colors;
+  @apply bg-white text-amber-600 hover:bg-gray-100 border border-amber-200 transition-colors;
 }
 
 .btn-ghost {
-  @apply text-gray-700 hover:text-brand-primary hover:bg-brand-light/20 transition-colors;
+  @apply text-gray-700 hover:text-amber-600 hover:bg-amber-50 transition-colors;
 }
 
 /* Input styles */
 .input-clean {
-  @apply border-gray-300 focus:border-brand-primary focus:ring focus:ring-brand-primary/20 focus:ring-opacity-50;
+  @apply border-gray-300 focus:border-amber-500 focus:ring focus:ring-amber-200 focus:ring-opacity-50;
 }
 
 /* Animation utilities */
@@ -186,7 +196,7 @@
 
 /* Improved card hover effects */
 .card-hover {
-  @apply transition-all duration-300 hover:shadow-lg hover:border-brand-primary/30;
+  @apply transition-all duration-300 hover:shadow-lg hover:border-amber-200;
 }
 
 /* Responsive typography */
